@@ -2,10 +2,13 @@ from NCBI_Parse_Toolkit import *
 
 result = NCBIParser("NC_005098.1", "examplename123@gmail.com")
 
+# Run these functions before trying to do anything else, since they fetch + parse the sequence and feature data
 result.parse_seq_info()
 
 result.parse_feature_info()
 
+
+# Output Functions - Displays information in terminal
 result.output_seq_info()
 
 result.output_feature_info()
