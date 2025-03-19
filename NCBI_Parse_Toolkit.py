@@ -10,6 +10,7 @@ class NCBIParser:
     """
     def __init__(self, accession_no, email):
         self.accession_no = accession_no
+        self.email = email
         Entrez.email = email
         try:
             with Entrez.efetch(
@@ -46,7 +47,9 @@ class NCBIParser:
                 'Description': self.record.description,
                 'Organism': self.record.annotations.get('organism'),
                 'Taxonomy': self.record.annotations.get('taxonomy', []),
-                'Full_sequence': str(self.record.seq),
+                'GC_content': (self.record.seq.count('G') + self.record.seq.count('C')) / len(self.record.seq),
+                'Full_sequence': str(self.record.seq)
+
             }
             self.sequence_data.append(sequence_info)
             return sequence_info
@@ -126,16 +129,6 @@ class NCBIParser:
             print(f"Feature Dictionary {x + 1}")
             for feature_x, key in self.feature_data[x].items():
                 print(f"{feature_x}: {key}")
-
-    def batch_parse(self, accession_list):
-        """Will add this in later: -> Parse Multiple Sequences at once"""
-        pass
-
-    def calculate_seq_stats(self):
-        """
-        Will add this in later: Calculate GC content, codon usage -  should probably be able to import from a separate class/project
-        """
-        pass
 
     def linear_gene_map(self):
         """
@@ -260,3 +253,31 @@ class NCBIParser:
 
         # write out final file
         path.write_text(content)
+
+    def gene_cluster(self, dist):
+        gene_loci = []
+        genes = [gene for gene in self.feature_data if gene['Type'] == 'GENE']  # makes list of all genes
+        for gene_dict in genes:
+            gene_loci.append((gene_dict['Locus Tag'], gene_dict['Start'], gene_dict['End']))
+
+
+        clusters = []
+        current_cluster = [gene_loci[0]]
+        # Pair current gene with the next one using zip method
+        for (loc1, s1, e1), (loc2, s2, e2) in zip(gene_loci, gene_loci[1:]):
+            if s2 - e1 <= dist: # check if genes are close enough
+                if not current_cluster:
+                    current_cluster.append((loc1, s1, e1))
+                current_cluster.append((loc2, s2, e2))
+            else:
+                if len(current_cluster) > 1:
+                    clusters.append(current_cluster)
+                current_cluster = []
+
+        if current_cluster:
+            clusters.append(current_cluster)
+
+        for i, cluster in enumerate(clusters):
+            print(f"Cluster {i + 1}: {cluster}")
+
+        return gene_loci
